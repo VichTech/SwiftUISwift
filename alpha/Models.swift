@@ -7,11 +7,11 @@
 
 import CoreLocation
 
-struct Item: Identifiable, Decodable, Equatable {
+struct Item: Identifiable, Decodable, Hashable {
     let id: Int
     let userId: Int
     let title: String
-    let completed: Bool
+    var completed: Bool
 }
 
 struct Pin: Identifiable, Decodable, Equatable {

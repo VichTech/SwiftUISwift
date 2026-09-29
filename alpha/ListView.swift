@@ -8,16 +8,27 @@
 import SwiftUI
 
 struct ListView: View {
-    let items: [Item]
+    @Binding var items: [Item]
     
     var body: some View {
-        List(items) { item in
-            VStack(alignment: .leading) {
-                Text("ID        : \(item.id)")
-                Text("USERID    : \(item.userId)")
-                Text("TITLE     : \(item.title)")
-                Text("COMPLETED : \(item.completed.description)")
-            }.monospaced()
+        NavigationStack {
+            List(items) { item in
+                NavigationLink(value: item) {
+                    VStack(alignment: .leading) {
+                        Text("ID        : \(item.id)")
+                        Text("USERID    : \(item.userId)")
+                        Text("TITLE     : \(item.title)")
+                        Text("COMPLETED : \(item.completed.description)")
+                    }
+                    .monospaced()
+                }
+            }
+            .navigationTitle("Items")
+            .navigationDestination(for: Item.self) { item in
+                if let index = items.firstIndex(where: { $0.id == item.id }) {
+                    ItemView(item: $items[index])
+                }
+            }
         }
     }
 }

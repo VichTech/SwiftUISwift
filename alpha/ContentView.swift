@@ -13,7 +13,7 @@ struct ContentView: View {
     var body: some View {
         TabView {
             Tab("List", systemImage: "list.bullet") {
-                ListView(items: contentVm.items)
+                ListView(items: $contentVm.items)
             }
             Tab("Map", systemImage: "map") {
                 MapView(pins: contentVm.pins)

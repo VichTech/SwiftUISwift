@@ -27,7 +27,7 @@ final class DataService {
     // Grand Central Dispatch
     func fetchGCDPins(completion: @escaping ([Pin]) -> Void) {
         let group = DispatchGroup()
-        let queue = DispatchQueue(label: "fetchPins")
+        let queue = DispatchQueue(label: "fetchGCDPins")
         var allPins = [Pin]()
         
         for step in 0..<3 {
@@ -37,7 +37,7 @@ final class DataService {
                 case .success(let pins):
                     queue.sync { allPins.append(contentsOf: pins) }
                 case .failure(let error):
-                    self?.logger.error("fetchPins step \(step) failed: \(error.localizedDescription, privacy: .public)")
+                    self?.logger.error("fetchGCDPins step \(step) failed: \(error.localizedDescription, privacy: .public)")
                 }
                 group.leave()
             }
@@ -56,7 +56,7 @@ final class DataService {
                     do {
                         return try await self.dataSource.fetchAsyncPins(step: step)
                     } catch {
-                        self.logger.error("fetchPins step \(step) failed: \(error.localizedDescription, privacy: .public)")
+                        self.logger.error("fetchAsyncPins step \(step) failed: \(error.localizedDescription, privacy: .public)")
                         return []
                     }
                 }
