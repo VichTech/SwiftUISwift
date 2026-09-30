@@ -7,7 +7,7 @@
 
 import CoreLocation
 
-struct Item: Identifiable, Decodable, Hashable {
+struct Item: Identifiable, Codable, Hashable, Sendable {
     let id: Int
     let userId: Int
     let title: String

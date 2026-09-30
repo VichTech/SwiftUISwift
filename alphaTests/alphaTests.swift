@@ -6,6 +6,7 @@
 //
 
 import Testing
+import Foundation
 @testable import alpha
 
 // MARK: - Mock
@@ -43,6 +44,14 @@ final class MockDataSource: DataSourceProtocol {
 @MainActor
 struct DataServiceTests {
 
+    // Each test gets its own file, so tests never share cache state
+    // and never touch the app's real cache.
+    func makeStore() -> ItemStore {
+        let url = FileManager.default.temporaryDirectory
+            .appending(path: "\(UUID().uuidString).json")
+        return ItemStore(fileURL: url)
+    }
+
     // Pins are deliberately out of order across steps,
     // so the tests prove the service sorts them.
     func makePinsMock() -> MockDataSource {
@@ -59,6 +68,10 @@ struct DataServiceTests {
         Pin(id: id, title: "Pin \(id)", latitude: 0, longitude: 0)
     }
 
+    func item(_ id: Int) -> Item {
+        Item(id: id, userId: 1, title: "Item \(id)", completed: false)
+    }
+
     // Waits for the GCD completion handler so the test can check the result.
     func fetchGCDPins(from service: DataService) async -> [Pin] {
         await withCheckedContinuation { continuation in
@@ -73,30 +86,72 @@ struct DataServiceTests {
     @Test("fetchItems returns the data source's items")
     func fetchItemsSuccess() async throws {
         let mock = MockDataSource()
-        mock.items = [Item(id: 1, userId: 1, title: "Test", completed: false)]
-        let service = DataService(dataSource: mock)
-        
+        mock.items = [item(1)]
+        let service = DataService(dataSource: mock, itemStore: makeStore())
+
         let items = try await service.fetchItems()
-        
+
         #expect(items == mock.items)
     }
 
-    @Test("fetchItems rethrows when the data source throws")
+    @Test("fetchItems rethrows when the data source throws and there is no cache")
     func fetchItemsFailure() async {
         let mock = MockDataSource()
         mock.itemsError = MockError()
-        let service = DataService(dataSource: mock)
+        let service = DataService(dataSource: mock, itemStore: makeStore())
 
         await #expect(throws: MockError.self) {
             try await service.fetchItems()
         }
     }
 
+    // MARK: cache
+
+    @Test("first fetchItems returns cached items without calling the network")
+    func firstFetchUsesCache() async throws {
+        let store = makeStore()
+        try await store.save(items: [item(1), item(2)])
+        let mock = MockDataSource()
+        mock.itemsError = MockError()   // network would fail if called
+        let service = DataService(dataSource: mock, itemStore: store)
+
+        let items = try await service.fetchItems()
+
+        #expect(items.map(\.id) == [1, 2])
+    }
+
+    @Test("second fetchItems goes to the network even when a cache exists")
+    func secondFetchUsesNetwork() async throws {
+        let store = makeStore()
+        try await store.save(items: [item(1)])
+        let mock = MockDataSource()
+        mock.items = [item(9)]
+        let service = DataService(dataSource: mock, itemStore: store)
+
+        _ = try await service.fetchItems()          // first: from cache
+        let items = try await service.fetchItems()  // second: from network
+
+        #expect(items.map(\.id) == [9])
+    }
+
+    @Test("a successful network fetch is saved to the cache")
+    func networkFetchIsSaved() async throws {
+        let store = makeStore()
+        let mock = MockDataSource()
+        mock.items = [item(3), item(4)]
+        let service = DataService(dataSource: mock, itemStore: store)
+
+        _ = try await service.fetchItems()
+
+        let saved = try await store.load()
+        #expect(saved.map(\.id) == [3, 4])
+    }
+
     // MARK: fetchAsyncPins
 
     @Test("fetchAsyncPins returns all pins sorted by id")
     func asyncPinsSuccess() async {
-        let service = DataService(dataSource: makePinsMock())
+        let service = DataService(dataSource: makePinsMock(), itemStore: makeStore())
 
         let pins = await service.fetchAsyncPins()
 
@@ -107,7 +162,7 @@ struct DataServiceTests {
     func asyncPinsFailingStep() async {
         let mock = makePinsMock()
         mock.failingSteps = [1]
-        let service = DataService(dataSource: mock)
+        let service = DataService(dataSource: mock, itemStore: makeStore())
 
         let pins = await service.fetchAsyncPins()
 
@@ -118,7 +173,7 @@ struct DataServiceTests {
 
     @Test("fetchGCDPins returns all pins sorted by id")
     func gcdPinsSuccess() async {
-        let service = DataService(dataSource: makePinsMock())
+        let service = DataService(dataSource: makePinsMock(), itemStore: makeStore())
 
         let pins = await fetchGCDPins(from: service)
 
@@ -129,7 +184,7 @@ struct DataServiceTests {
     func gcdPinsFailingStep() async {
         let mock = makePinsMock()
         mock.failingSteps = [1]
-        let service = DataService(dataSource: mock)
+        let service = DataService(dataSource: mock, itemStore: makeStore())
 
         let pins = await fetchGCDPins(from: service)
 

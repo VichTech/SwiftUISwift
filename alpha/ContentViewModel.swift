@@ -23,7 +23,7 @@ final class ContentViewModel {
     var items = [Item]()
     var state: ViewState = .idle
     
-    @ObservationIgnored private let dataService = DataService(dataSource: RemoteDataSource())
+    @ObservationIgnored private let dataService = DataService(dataSource: RemoteDataSource(), itemStore: ItemStore())
     
     private let logger = Logger(subsystem: "com.vichtechnologies.alpha", category: "ContentViewModel")
     
