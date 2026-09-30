@@ -4,6 +4,7 @@
 //
 //  Created by Christophe Vichery on 9/22/26.
 //
+
 import os
 import Foundation
 
@@ -15,12 +16,12 @@ final class DataService {
         self.dataSource = dataSource
     }
     
-    func fetchItems() async -> [Item] {
+    func fetchItems() async throws -> [Item] {
         do {
             return try await dataSource.fetchItems()
         } catch {
             logger.error("fetchItems failed: \(error.localizedDescription, privacy: .public)")
-            return []
+            throw error
         }
     }
     

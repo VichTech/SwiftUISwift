@@ -71,25 +71,25 @@ struct DataServiceTests {
     // MARK: fetchItems
 
     @Test("fetchItems returns the data source's items")
-    func fetchItemsSuccess() async {
+    func fetchItemsSuccess() async throws {
         let mock = MockDataSource()
         mock.items = [Item(id: 1, userId: 1, title: "Test", completed: false)]
         let service = DataService(dataSource: mock)
-
-        let items = await service.fetchItems()
-
+        
+        let items = try await service.fetchItems()
+        
         #expect(items == mock.items)
     }
 
-    @Test("fetchItems returns an empty array when the data source throws")
+    @Test("fetchItems rethrows when the data source throws")
     func fetchItemsFailure() async {
         let mock = MockDataSource()
         mock.itemsError = MockError()
         let service = DataService(dataSource: mock)
 
-        let items = await service.fetchItems()
-
-        #expect(items.isEmpty)
+        await #expect(throws: MockError.self) {
+            try await service.fetchItems()
+        }
     }
 
     // MARK: fetchAsyncPins
