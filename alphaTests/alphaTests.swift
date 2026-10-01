@@ -7,6 +7,7 @@
 
 import Testing
 import Foundation
+import SwiftData
 @testable import alpha
 
 // MARK: - Mock
@@ -39,7 +40,7 @@ final class MockDataSource: DataSourceProtocol {
     }
 }
 
-// MARK: - Tests
+// MARK: - DataService
 
 @MainActor
 struct DataServiceTests {
@@ -50,6 +51,13 @@ struct DataServiceTests {
         let url = FileManager.default.temporaryDirectory
             .appending(path: "\(UUID().uuidString).json")
         return ItemFileStore(fileURL: url)
+    }
+
+    // An in-memory database: empty for each test, never written to disk.
+    func makeDBStore() throws -> ItemDBStore {
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: ItemEntity.self, configurations: config)
+        return ItemDBStore(modelContainer: container)
     }
 
     // Pins are deliberately out of order across steps,
@@ -147,6 +155,17 @@ struct DataServiceTests {
         #expect(saved.map(\.id) == [3, 4])
     }
 
+    @Test("first fetchItems goes to the network when the database is empty")
+    func emptyDatabaseFallsThroughToNetwork() async throws {
+        let mock = MockDataSource()
+        mock.items = [item(7)]
+        let service = DataService(dataSource: mock, itemStore: try makeDBStore())
+
+        let items = try await service.fetchItems()
+
+        #expect(items.map(\.id) == [7])
+    }
+
     // MARK: fetchAsyncPins
 
     @Test("fetchAsyncPins returns all pins sorted by id")
@@ -189,5 +208,74 @@ struct DataServiceTests {
         let pins = await fetchGCDPins(from: service)
 
         #expect(pins.map(\.id) == [2, 3, 5])
+    }
+}
+
+// MARK: - ItemDBStore
+
+@MainActor
+struct ItemDBStoreTests {
+
+    // An in-memory database: empty for each test, never written to disk.
+    func makeStore() throws -> ItemDBStore {
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: ItemEntity.self, configurations: config)
+        return ItemDBStore(modelContainer: container)
+    }
+
+    func item(_ id: Int, completed: Bool = false) -> Item {
+        Item(id: id, userId: 1, title: "Item \(id)", completed: completed)
+    }
+
+    @Test("load returns an empty array when the database is empty")
+    func loadEmpty() async throws {
+        let store = try makeStore()
+
+        let items = try await store.load()
+
+        #expect(items.isEmpty)
+    }
+
+    @Test("save then load returns the items sorted by id")
+    func saveAndLoad() async throws {
+        let store = try makeStore()
+
+        try await store.save(items: [item(3), item(1), item(2)])
+        let items = try await store.load()
+
+        #expect(items.map(\.id) == [1, 2, 3])
+    }
+
+    @Test("saving an existing id updates it instead of duplicating it")
+    func saveUpserts() async throws {
+        let store = try makeStore()
+
+        try await store.save(items: [item(1, completed: false)])
+        try await store.save(items: [item(1, completed: true)])
+        let items = try await store.load()
+
+        #expect(items.count == 1)
+        #expect(items.first?.completed == true)
+    }
+
+    @Test("update changes completed on an existing item")
+    func updateExisting() async throws {
+        let store = try makeStore()
+        try await store.save(items: [item(1), item(2)])
+
+        try await store.update(item: item(2, completed: true))
+        let items = try await store.load()
+
+        #expect(items.map(\.completed) == [false, true])
+    }
+
+    @Test("update inserts the item when it isn't stored yet")
+    func updateMissing() async throws {
+        let store = try makeStore()
+
+        try await store.update(item: item(5, completed: true))
+        let items = try await store.load()
+
+        #expect(items == [item(5, completed: true)])
     }
 }
