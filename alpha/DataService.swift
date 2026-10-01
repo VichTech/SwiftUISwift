@@ -10,20 +10,29 @@ import Foundation
 
 final class DataService {
     private var isFirstLoad = true
-    private let itemStore: ItemStore
+    private let itemStore: ItemStoreProtocol
     private let dataSource: DataSourceProtocol
     private let logger = Logger(subsystem: "com.vichtechnologies.alpha", category: "DataService")
     
-    init(dataSource: DataSourceProtocol, itemStore: ItemStore) {
+    init(dataSource: DataSourceProtocol, itemStore: ItemStoreProtocol) {
         self.itemStore = itemStore
         self.dataSource = dataSource
+    }
+    
+    func updateItem(item: Item) async {
+        do {
+            try await itemStore.update(item: item)
+        } catch {
+            logger.error("itemStore update failed: \(error.localizedDescription, privacy: .public)")
+        }
     }
     
     func fetchItems() async throws -> [Item] {
         if isFirstLoad {
             isFirstLoad = false
             do {
-                return try await itemStore.load()
+                let cached = try await itemStore.load()
+                if !cached.isEmpty { return cached }
             } catch {
                 logger.error("itemStore load failed: \(error.localizedDescription, privacy: .public)")
             }

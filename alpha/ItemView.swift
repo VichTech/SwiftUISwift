@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ItemView: View {
     @Binding var item: Item
+    let onUpdate: (Item) async -> Void
     
     var body: some View {
         VStack(alignment: .center) {
@@ -20,6 +21,9 @@ struct ItemView: View {
         }
         .padding()
         .monospaced()
+        .onChange(of: item.completed) {
+            Task { await onUpdate(item) }
+        }
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text(item.title)

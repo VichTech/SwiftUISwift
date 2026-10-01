@@ -6,6 +6,7 @@
 //
 
 import os
+import SwiftData
 import Foundation
 import Observation
 
@@ -23,12 +24,20 @@ final class ContentViewModel {
     var items = [Item]()
     var state: ViewState = .idle
     
-    @ObservationIgnored private let dataService = DataService(dataSource: RemoteDataSource(), itemStore: ItemStore())
+    @ObservationIgnored private let dataService = DataService(dataSource: RemoteDataSource(),
+                                                              itemStore: ItemDBStore(modelContainer: try! ModelContainer(for: ItemEntity.self)))
     
     private let logger = Logger(subsystem: "com.vichtechnologies.alpha", category: "ContentViewModel")
     
+    func updateItem(item: Item) async {
+        await dataService.updateItem(item: item)
+    }
+    
     func fetchItems() async {
-        state = .loading
+        if items.isEmpty {
+            state = .loading
+        }
+        
         do {
             items = try await dataService.fetchItems()
             state = .loaded

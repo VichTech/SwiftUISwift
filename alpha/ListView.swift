@@ -10,6 +10,7 @@ import SwiftUI
 struct ListView: View {
     let state: ViewState
     let onFetch: () async -> Void
+    let onUpdate: (Item) async -> Void
     
     @Binding var items: [Item]
     
@@ -71,7 +72,7 @@ struct ListView: View {
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: Item.self) { item in
                 if let index = items.firstIndex(where: { $0.id == item.id }) {
-                    ItemView(item: $items[index])
+                    ItemView(item: $items[index], onUpdate: onUpdate)
                 }
             }
         }

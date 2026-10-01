@@ -46,10 +46,10 @@ struct DataServiceTests {
 
     // Each test gets its own file, so tests never share cache state
     // and never touch the app's real cache.
-    func makeStore() -> ItemStore {
+    func makeStore() -> ItemFileStore {
         let url = FileManager.default.temporaryDirectory
             .appending(path: "\(UUID().uuidString).json")
-        return ItemStore(fileURL: url)
+        return ItemFileStore(fileURL: url)
     }
 
     // Pins are deliberately out of order across steps,

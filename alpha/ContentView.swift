@@ -13,12 +13,16 @@ struct ContentView: View {
     var body: some View {
         TabView {
             Tab("List", systemImage: "list.bullet") {
-                ListView(state: contentVm.state, onFetch: fetchItems, items: $contentVm.items)
+                ListView(state: contentVm.state, onFetch: fetchItems, onUpdate: updateItem, items: $contentVm.items)
             }
             Tab("Map", systemImage: "map") {
                 MapView(pins: contentVm.pins, onFetch: fetchPins)
             }
         }
+    }
+    
+    func updateItem(item: Item) async {
+        await contentVm.updateItem(item: item)
     }
     
     func fetchItems() async {
