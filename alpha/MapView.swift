@@ -10,12 +10,16 @@ import MapKit
 
 struct MapView: View {
     let pins: [Pin]
+    let onFetch: () async -> Void
 
     var body: some View {
         Map {
             ForEach(pins) { pin in
                 Marker(pin.title, coordinate: pin.coordinate)
             }
+        }
+        .task {
+            await onFetch()
         }
     }
 }

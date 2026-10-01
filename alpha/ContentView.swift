@@ -16,21 +16,22 @@ struct ContentView: View {
                 ListView(state: contentVm.state, onFetch: fetchItems, items: $contentVm.items)
             }
             Tab("Map", systemImage: "map") {
-                MapView(pins: contentVm.pins)
+                MapView(pins: contentVm.pins, onFetch: fetchPins)
             }
-        }
-        .task {
-            // Grand Central Dispatch
-            contentVm.fetchGCDPins()
-            
-            // Swift Asynchronous
-            // await contentVm.fetchAsyncPins()
         }
     }
     
     func fetchItems() async {
         await contentVm.fetchItems()
     }
+    
+    func fetchPins() async {
+        // Grand Central Dispatch
+        // contentVm.fetchGCDPins()
+        
+        // Swift Asynchronous
+        await contentVm.fetchAsyncPins()
+       }
 }
 
 #Preview {

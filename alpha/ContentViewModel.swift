@@ -47,6 +47,12 @@ final class ContentViewModel {
     
     // Swift Asynchronous
     func fetchAsyncPins() async {
-        pins = await dataService.fetchAsyncPins()
+        //try? await Task.sleep(for: .seconds(3)) // TEST
+        let fetchedPins = await dataService.fetchAsyncPins()
+        if Task.isCancelled {
+            logger.info("fetchAsyncPins cancelled")
+            return
+        }
+        pins = fetchedPins
     }
 }
